@@ -4,7 +4,9 @@ from tooling import load_tools, run_tool
 
 llm_handler = llm_engine()
 model = "gpt-5.2"
-MAX_LOOPS = 4
+# One user request may require several tool calls plus one final assistant
+# response. Keep this comfortably above the expected number of tool steps.
+MAX_LOOPS = 8
 
 def naive_run(messages):
     loops = 0
