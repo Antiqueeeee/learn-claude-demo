@@ -1,150 +1,166 @@
 # AGENTS.md
 
-This repository is a small Python project that demonstrates an agent loop calling
-whitelisted tools via the OpenAI SDK.
+This file is for agentic coding assistants working in this repository.
 
-If you are an agentic coding assistant working in this repo, follow this file.
+Follow these repository-specific instructions when they conflict with generic
+assistant habits.
 
-## Project Layout
+## Scope and Intent
 
-- `main.py`: example entrypoint that calls `modes.the_agent_loop.naive_run()`
-- `modes/the_agent_loop.py`: streaming chat loop + tool-call plumbing
-- `tooling.py`: tool specs (`load_tools`) + tool whitelist/runner (`TOOL_REGISTRY`, `run_tool`)
-- `engines/llmEngine.py`: OpenAI client wrapper (`llm_engine`)
-- `engines/configEngine.py`: settings loaded from `.env` via `pydantic-settings`
-- `tools/`: local tools (`fx_convert`, `unit_convert`, `search_docs`)
+- Small Python repository demonstrating an agent loop that calls a whitelist of
+  local tools through an LLM client.
+- Keep changes small and easy to inspect.
+- Prefer improving existing files over adding new abstractions unless clearly needed.
 
-## Setup
+## Repository Layout
 
-- Python: repo currently runs on Python 3.13 (see `python -V`).
-- Environment:
-  - `.vscode/settings.json` suggests using conda.
-  - `.env` is used at runtime; do not commit secrets.
+- `main.py`: entrypoint calling `modes.the_agent_loop.naive_run()`
+- `modes/the_agent_loop.py`: streaming agent loop, tool-call assembly, and loop control
+- `tooling.py`: tool schema definitions, whitelist registry, and tool dispatch
+- `engines/llmEngine.py`: LLM client wrapper
+- `engines/configEngine.py`: environment/config loading
+- `tools/`: local tools for currency conversion, unit conversion, and docs search
+- `docs/plans/`: design notes and implementation plans
 
-Required `.env` variables (see `engines/configEngine.py`):
+## Environment and Setup
 
-- `LLM_DEFAULT_BASE_URL`
-- `LLM_DEFAULT_API_KEY`
+- The repo is plain Python without checked-in `pyproject.toml`, `pytest.ini`,
+  `setup.cfg`, `Makefile`, or package manager lockfile.
+- Python in this workspace is expected to be 3.13.
+- Runtime configuration comes from environment variables loaded via `.env`.
+- `.env.example` may be used as a non-secret reference if present.
 
-Optional (used with `getattr` in `engines/llmEngine.py`):
-
-- `LLM_DEFAULT_TIMEOUT` (seconds)
-- `LLM_DEFAULT_MAX_RETRIES`
-
-## Commands (Build / Lint / Test)
-
-There is no dedicated build system checked in (no `pyproject.toml`, `pytest.ini`,
-`Makefile`, etc.). Use the commands below.
+## Run / Build / Test Commands
 
 ### Run
 
-- Run the example program: `python main.py`
+- `python main.py`
 
-### “Build” (syntax/type sanity)
+### Build / Syntax Sanity
 
-- Fast syntax check (compiles all modules): `python -m compileall -q .`
+- There is no formal build pipeline in-repo.
+- Fast whole-repo syntax check: `python -m compileall -q .`
 
 ### Tests
 
-No tests are currently present, but `unittest` discovery works.
+- No automated tests are currently checked in.
+- If tests are added with `unittest`, run all tests with:
+  - `python -m unittest discover -v`
 
-- Run all unittest tests (if/when added): `python -m unittest discover -v`
-- Run a single unittest test (recommended pattern):
-  - By dotted path: `python -m unittest -v tests.test_module.TestClass.test_name`
+### Run a Single Test
 
-If the repo later adopts pytest (not currently configured), typical equivalents:
+- Preferred pattern: `python -m unittest -v tests.test_module.TestClass.test_name`
+- Single module: `python -m unittest -v tests.test_module`
+- Single class: `python -m unittest -v tests.test_module.TestClass`
 
-- All tests: `pytest -q`
-- Single file: `pytest -q tests/test_module.py`
-- Single test: `pytest -q tests/test_module.py::test_name`
-- Match by substring: `pytest -q -k "name_substring"`
+Do not assume `pytest` is configured unless its dependency and config are added.
 
-### Lint / Format
+## Lint / Format / Type Check Status
 
-No lint/format tooling is configured in-repo. If you add tooling, prefer:
-
-- Ruff (lint + import sorting): `ruff check .` and `ruff check . --fix`
-- Black (format): `black .`
-- Mypy/pyright (types): `mypy .` or `pyright`
-
-When adding these, also add config + a short section here with exact commands.
+- No lint, formatter, or static type checker is currently configured in-repo.
+- Do not claim that `ruff`, `black`, `mypy`, `pyright`, or `pytest` are project
+  standards unless their config or dependencies are added.
 
 ## Code Style Guidelines
 
 ### Imports
 
-- Group imports in this order, with a blank line between groups:
-  1) stdlib
-  2) third-party
-  3) local (`engines.*`, `modes.*`, `tools.*`)
-- Avoid wildcard imports.
-- Prefer explicit imports from local modules (as done in `tooling.py`).
+- Group imports in this order: standard library, third-party packages, local
+  modules.
+- Separate groups with a blank line when there are multiple groups.
+- Prefer explicit imports over wildcard imports.
+- Keep local imports direct.
 
 ### Formatting
 
 - Use 4-space indentation.
-- Prefer double quotes for JSON-like keys/strings; keep it consistent per file.
-- Keep lines reasonably short; wrap long strings with parentheses.
-- Use f-strings for interpolation.
+- Match the surrounding file's style if it already exists.
+- Keep lines reasonably short; wrap long literals with parentheses.
+- Prefer clarity over clever formatting.
+- Preserve readable JSON and dict literals when editing tool schemas.
 
 ### Types
 
-- Add type hints for public functions and any non-trivial internal helpers.
-- Prefer `from __future__ import annotations` for modules that define many hints
-  (already used in multiple files).
-- Use `Any` only at integration boundaries (LLM responses, JSON blobs, SDK
-  payloads). Narrow types as soon as practical.
-- For JSON-like structures, use `dict[str, Any]` / `list[dict[str, Any]]` on
-  Python 3.9+.
+- Add type hints for public functions and non-trivial helpers you touch.
+- Use `Any` only at dynamic boundaries such as LLM payloads, tool arguments, and
+  JSON-like responses.
+- Narrow loose data to clearer shapes as soon as practical.
 
 ### Naming
 
-- Modules/files: `snake_case.py`
-- Functions/vars: `snake_case`
+- Modules and files: `snake_case.py`
+- Functions and variables: `snake_case`
 - Classes: `PascalCase`
-- Constants: `UPPER_SNAKE_CASE` (see `MAX_LOOPS`, `RATES`)
+- Constants: `UPPER_SNAKE_CASE`
+- Use descriptive names that reflect tool behavior and loop state.
 
 ### Error Handling
 
-- Raise `ValueError` for invalid user/tool inputs, with a clear message that
-  includes the failing values and the allowed/expected shape.
-- Do not silently swallow exceptions. If you must catch, either:
-  - re-raise with context, or
-  - return a structured error object (the agent loop already wraps tool errors
-    into `{"error": ...}` tool responses).
-- Keep exception scopes tight (catch only what you can handle).
+- Raise clear exceptions for invalid tool names, invalid arguments, or invalid user input.
+- Prefer `ValueError` for validation failures when the caller supplied a bad value.
+- Keep exception scopes tight.
+- Do not silently swallow exceptions.
+- If catching an exception to return structured data, return stable keys in a
+  JSON-serializable dict.
 
-### Logging / Printing
+### Logging and Debug Output
 
-- The code currently uses `print()` for debugging (payload and loop dumps).
-- If you introduce logging, prefer `logging` and keep debug logs behind a flag.
-- Never print secrets (API keys, full `.env` contents).
+- The current code uses `print()` for loop/debug output.
+- Avoid adding noisy debug output unless it is directly useful.
+- Never print secrets, tokens, API keys, or raw `.env` contents.
 
-## Tooling and Agent Loop Conventions
+## Agent-Specific Repository Rules
 
-- Tools must be whitelisted in `tooling.py` (`TOOL_REGISTRY`).
-  - Do not use `globals()`, `eval`, dynamic imports, or arbitrary execution.
-- Keep tool argument schemas strict:
-  - Set `additionalProperties: False` in tool JSON schema (already done).
-  - Validate and normalize inputs in tool functions (see `fx_convert`).
-- Tool outputs should be JSON-serializable dicts with stable keys.
+### Tool Registry and Execution
 
-### Streaming / Resource Safety
+- Only call tools that are explicitly whitelisted in `tooling.py`.
+- Do not introduce `eval`, `globals()`, arbitrary dynamic imports, or other
+  non-whitelisted execution paths.
+- Tool outputs should stay JSON-serializable and use stable field names.
 
-- When iterating `chat_stream()`, always close the stream if a `close()` method
-  exists (already done in `modes/the_agent_loop.py`). Keep that pattern.
-- When assembling tool call arguments from streamed chunks, treat arguments as
-  incremental text and only parse JSON at the end (already done).
+### Tool Schema Discipline
 
-## Security / Secrets
+- Keep tool parameter schemas strict.
+- Preserve `additionalProperties: False` for function tool schemas unless there
+  is a strong repo-specific reason to change it.
+- Validate and normalize incoming tool arguments in the tool implementation.
 
-- `.env` contains secrets; do not commit it or paste it into logs.
-- When adding documentation or examples, use placeholder values.
+### Streaming Loop Conventions
+
+- Accumulate streamed tool-call argument chunks and parse JSON only after the
+  full argument string is assembled.
+- Preserve the assistant/tool message ordering expected by tool-calling APIs.
+- Keep loop termination behavior explicit and bounded by safety limits.
+
+## Security and Secrets
+
+- Treat `.env` as sensitive.
+- **Do not read `.env` contents unless the user explicitly asks and gives a
+  clear reason.**
+- Do not quote, summarize, log, print, or copy `.env` values into output, docs,
+  commit messages, or debugging notes.
+- If you need to understand configuration keys, inspect:
+  - `engines/configEngine.py`
+  - `.env.example`
+- When discussing configuration, refer to variable names only, never real values.
+- Do not commit secrets or credentials.
+
+## Docs and Planning
+
+- Put new design or implementation plans under `docs/plans/`.
+- Prefer concise documentation that helps the next agent act correctly.
 
 ## Cursor / Copilot Rules
 
-- No Cursor rules found (`.cursor/rules/` or `.cursorrules`).
-- No Copilot instructions found (`.github/copilot-instructions.md`).
+- No Cursor rules were found in `.cursor/rules/`.
+- No `.cursorrules` file was found.
+- No Copilot instructions were found in `.github/copilot-instructions.md`.
+- If any of those files are added later, incorporate their repo-specific
+  constraints into this document and follow the more specific rule.
 
-If these are added later, copy the relevant constraints into this file and
-prioritize them when they conflict with generic guidance.
+## Practical Defaults for Agents
+
+- Before making code changes, inspect the relevant file and preserve local style.
+- Prefer minimal patches over broad refactors.
+- Validate syntax with `python -m compileall -q .` after non-trivial edits.
+- If tests are added, run the narrowest relevant test first, then broader checks.
