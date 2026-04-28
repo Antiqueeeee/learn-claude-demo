@@ -1,7 +1,7 @@
 import json
 
 from engines.llmEngine import llm_engine
-from tool_runtime import build_builtin_registry
+from tool_runtime import build_registry
 
 llm_handler = llm_engine()
 model = "gpt-5.2"
@@ -12,7 +12,7 @@ MAX_LOOPS = 8
 
 def naive_run(messages):
     loops = 0
-    registry = build_builtin_registry()
+    registry = build_registry()
 
     while loops < MAX_LOOPS:
         print(f"loops : {loops}\nmessages:\n{json.dumps(messages,ensure_ascii=False,indent=2)}")

@@ -4,14 +4,14 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from tool_runtime import build_builtin_registry
+from tool_runtime import build_registry
 
 EXPECTED_TOOL_NAMES = {"search_docs", "fx_convert", "unit_convert"}
 
 
 class ToolRuntimeTests(unittest.TestCase):
-    def test_build_builtin_registry_formats_openai_tools(self) -> None:
-        registry = build_builtin_registry()
+    def test_build_registry_loads_builtin_tools_by_default(self) -> None:
+        registry = build_registry()
 
         tools = registry.format_tools(provider="openai", model="gpt-5.2")
 
@@ -51,14 +51,41 @@ class ToolRuntimeTests(unittest.TestCase):
             ["USD", "JPY", "KRW", "VND", "IDR"],
         )
 
-    def test_build_builtin_registry_rejects_unsupported_provider(self) -> None:
-        registry = build_builtin_registry()
+    def test_build_registry_accepts_extra_tools(self) -> None:
+        extra_tool = ToolRuntimeArchitectureTests()._make_dummy_tool()
+
+        registry = build_registry(extra_tools=[extra_tool])
+
+        tools = registry.format_tools(provider="openai", model="gpt-5.2")
+
+        self.assertEqual(
+            {tool["function"]["name"] for tool in tools},
+            EXPECTED_TOOL_NAMES | {"dummy"},
+        )
+
+    def test_build_registry_supports_pure_manual_tool_sets(self) -> None:
+        manual_tool = ToolRuntimeArchitectureTests()._make_dummy_tool()
+
+        registry = build_registry(
+            include_builtin=False,
+            extra_tools=[manual_tool],
+        )
+
+        tools = registry.format_tools(provider="openai", model="gpt-5.2")
+
+        self.assertEqual(
+            {tool["function"]["name"] for tool in tools},
+            {"dummy"},
+        )
+
+    def test_build_registry_rejects_unsupported_provider(self) -> None:
+        registry = build_registry()
 
         with self.assertRaises(ValueError):
             registry.format_tools(provider="anthropic", model="claude-sonnet-4")
 
-    def test_build_builtin_registry_executes_search_docs(self) -> None:
-        registry = build_builtin_registry()
+    def test_build_registry_executes_search_docs(self) -> None:
+        registry = build_registry()
 
         result = registry.execute("search_docs", {"query": "agent loop"})
 
@@ -157,7 +184,7 @@ class ToolRuntimeArchitectureTests(unittest.TestCase):
             with (
                 patch.object(
                     agent_loop,
-                    "build_builtin_registry",
+                    "build_registry",
                     return_value=fake_registry,
                 ),
                 patch.object(

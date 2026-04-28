@@ -55,5 +55,18 @@ class ToolRegistry:
         return normalized_args
 
 
-def build_builtin_registry(*, include_disabled: bool = False) -> ToolRegistry:
-    return ToolRegistry(load_builtin_tools(include_disabled=include_disabled))
+def build_registry(
+    *,
+    include_builtin: bool = True,
+    extra_tools: Iterable[BaseTool] | None = None,
+    include_disabled: bool = False,
+) -> ToolRegistry:
+    tools: list[BaseTool] = []
+
+    if include_builtin:
+        tools.extend(load_builtin_tools(include_disabled=include_disabled))
+
+    if extra_tools is not None:
+        tools.extend(extra_tools)
+
+    return ToolRegistry(tools)
