@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import copy
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from agent_tools.base import BaseTool
+from tool_runtime.base import BaseTool
+from tool_runtime.loader import load_builtin_tools
 
 
 class ToolRegistry:
@@ -23,8 +23,16 @@ class ToolRegistry:
         except KeyError as exc:
             raise ValueError(f"Unknown tool: {name}") from exc
 
-    def list_tools(self) -> list[BaseTool]:
-        return [copy.deepcopy(tool) for tool in self._tools]
+    def format_tools(
+        self,
+        *,
+        provider: str,
+        model: str | None = None,
+    ) -> list[dict[str, Any]]:
+        return [
+            tool.to_provider_format(provider, model=model)
+            for tool in self._tools
+        ]
 
     def execute(self, name: str, args: Mapping[str, Any]) -> Any:
         tool = self.get(name)
@@ -45,3 +53,7 @@ class ToolRegistry:
                 raise ValueError("Tool argument keys must be strings")
 
         return normalized_args
+
+
+def build_builtin_registry(*, include_disabled: bool = False) -> ToolRegistry:
+    return ToolRegistry(load_builtin_tools(include_disabled=include_disabled))

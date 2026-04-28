@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent_tools.base import BaseTool
-from tools.docs import search_docs as search_docs_impl
+from tool_runtime.base import BaseTool
 
 
 class SearchDocsTool(BaseTool):
@@ -20,8 +19,9 @@ class SearchDocsTool(BaseTool):
         "additionalProperties": False,
     }
 
-    def run(self, **kwargs: Any) -> Any:
-        return search_docs_impl(**kwargs)
+    def run(self, query: str, **kwargs: Any) -> dict[str, Any]:
+        del kwargs
+        return {"hits": [], "query": query}
 
 
 TOOL = SearchDocsTool()

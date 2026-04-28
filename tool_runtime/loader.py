@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-import importlib
 import copy
+import importlib
 from pathlib import Path
 
-from agent_tools.base import BaseTool
+from tool_runtime.base import BaseTool
 
-BUILTINS_PACKAGE = "agent_tools.builtins"
+BUILTIN_TOOLS_PACKAGE = "tool_runtime.builtin_tools"
 
 
 def load_builtin_tools(*, include_disabled: bool = False) -> list[BaseTool]:
     tools: list[BaseTool] = []
     seen_names: set[str] = set()
 
-    package = importlib.import_module(BUILTINS_PACKAGE)
+    package = importlib.import_module(BUILTIN_TOOLS_PACKAGE)
     package_path = Path(package.__file__).resolve().parent
     module_names = sorted(
         path.stem
@@ -22,7 +22,7 @@ def load_builtin_tools(*, include_disabled: bool = False) -> list[BaseTool]:
     )
 
     for module_name in module_names:
-        module = importlib.import_module(f"{BUILTINS_PACKAGE}.{module_name}")
+        module = importlib.import_module(f"{BUILTIN_TOOLS_PACKAGE}.{module_name}")
         tool = getattr(module, "TOOL", None)
         if tool is None:
             raise ValueError(f"Built-in tool module missing TOOL: {module.__name__}")

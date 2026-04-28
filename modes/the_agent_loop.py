@@ -1,6 +1,7 @@
 import json
+
 from engines.llmEngine import llm_engine
-from tooling import load_tools, run_tool
+from tool_runtime import build_builtin_registry
 
 llm_handler = llm_engine()
 model = "gpt-5.2"
@@ -11,6 +12,7 @@ MAX_LOOPS = 8
 
 def naive_run(messages):
     loops = 0
+    registry = build_builtin_registry()
 
     while loops < MAX_LOOPS:
         print(f"loops : {loops}\nmessages:\n{json.dumps(messages,ensure_ascii=False,indent=2)}")
@@ -18,7 +20,7 @@ def naive_run(messages):
         stream = llm_handler.chat_stream(
             model=model,
             messages=messages,
-            tools=load_tools(provider=PROVIDER, model=model),
+            tools=registry.format_tools(provider=PROVIDER, model=model),
         )
 
         tool_calls = {}  # idx -> {"id","name","arguments"}
@@ -84,7 +86,7 @@ def naive_run(messages):
                     tool_out = {"error": f"Invalid JSON arguments: {e}", "raw": c["arguments"]}
                 else:
                     try:
-                        tool_out = run_tool(c["name"], args)   # tooling.py 里实现
+                        tool_out = registry.execute(c["name"], args)
                     except Exception as e:
                         tool_out = {"error": str(e), "tool": c["name"], "args": args}
 

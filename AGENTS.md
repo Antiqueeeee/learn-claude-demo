@@ -16,10 +16,9 @@ assistant habits.
 
 - `main.py`: entrypoint calling `modes.the_agent_loop.naive_run()`
 - `modes/the_agent_loop.py`: streaming agent loop, tool-call assembly, and loop control
-- `tooling.py`: tool schema definitions, whitelist registry, and tool dispatch
+- `tool_runtime/`: tool runtime, registry, loading rules, and built-in tool implementations
 - `engines/llmEngine.py`: LLM client wrapper
 - `engines/configEngine.py`: environment/config loading
-- `tools/`: local tools for currency conversion, unit conversion, and docs search
 - `docs/plans/`: design notes and implementation plans
 
 ## Environment and Setup
@@ -43,7 +42,7 @@ assistant habits.
 
 ### Tests
 
-- No automated tests are currently checked in.
+- Automated tests currently live under `tests/` using `unittest`.
 - If tests are added with `unittest`, run all tests with:
   - `python -m unittest discover -v`
 
@@ -113,7 +112,7 @@ Do not assume `pytest` is configured unless its dependency and config are added.
 
 ### Tool Registry and Execution
 
-- Only call tools that are explicitly whitelisted in `tooling.py`.
+- Only call tools that are explicitly discoverable through `tool_runtime/loader.py`.
 - Do not introduce `eval`, `globals()`, arbitrary dynamic imports, or other
   non-whitelisted execution paths.
 - Tool outputs should stay JSON-serializable and use stable field names.
