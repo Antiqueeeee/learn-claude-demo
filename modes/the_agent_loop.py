@@ -4,6 +4,7 @@ from tooling import load_tools, run_tool
 
 llm_handler = llm_engine()
 model = "gpt-5.2"
+PROVIDER = "openai"
 # One user request may require several tool calls plus one final assistant
 # response. Keep this comfortably above the expected number of tool steps.
 MAX_LOOPS = 8
@@ -17,7 +18,7 @@ def naive_run(messages):
         stream = llm_handler.chat_stream(
             model=model,
             messages=messages,
-            tools=load_tools(),
+            tools=load_tools(provider=PROVIDER, model=model),
         )
 
         tool_calls = {}  # idx -> {"id","name","arguments"}
