@@ -1,12 +1,23 @@
 import importlib
+import os
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from tool_runtime import build_registry
 
-EXPECTED_TOOL_NAMES = {"search_docs", "fx_convert", "unit_convert"}
+EXPECTED_TOOL_NAMES = {
+    "bash",
+    "edit_file",
+    "fx_convert",
+    "read_file",
+    "search_docs",
+    "unit_convert",
+    "write_file",
+}
 
 
 class ToolRuntimeTests(unittest.TestCase):
@@ -36,6 +47,38 @@ class ToolRuntimeTests(unittest.TestCase):
                 if tool["function"]["name"] == "unit_convert"
             ),
             ["value", "from_unit", "to_unit"],
+        )
+        self.assertEqual(
+            next(
+                tool["function"]["parameters"]["required"]
+                for tool in tools
+                if tool["function"]["name"] == "bash"
+            ),
+            ["command"],
+        )
+        self.assertEqual(
+            next(
+                tool["function"]["parameters"]["required"]
+                for tool in tools
+                if tool["function"]["name"] == "read_file"
+            ),
+            ["path"],
+        )
+        self.assertEqual(
+            next(
+                tool["function"]["parameters"]["required"]
+                for tool in tools
+                if tool["function"]["name"] == "write_file"
+            ),
+            ["path", "content"],
+        )
+        self.assertEqual(
+            next(
+                tool["function"]["parameters"]["required"]
+                for tool in tools
+                if tool["function"]["name"] == "edit_file"
+            ),
+            ["path", "old_text", "new_text"],
         )
         fx_schema = next(
             tool["function"]["parameters"]
@@ -90,6 +133,84 @@ class ToolRuntimeTests(unittest.TestCase):
         result = registry.execute("search_docs", {"query": "agent loop"})
 
         self.assertEqual(result, {"hits": [], "query": "agent loop"})
+
+    def test_build_registry_executes_bash(self) -> None:
+        registry = build_registry()
+
+        result = registry.execute("bash", {"command": "printf hello"})
+
+        self.assertEqual(result["command"], "printf hello")
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["stdout"], "hello")
+        self.assertEqual(result["stderr"], "")
+        self.assertFalse(result["timed_out"])
+
+    def test_build_registry_executes_read_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            temp_path = Path(tmp_dir)
+            file_path = temp_path / "notes.txt"
+            file_path.write_text("alpha\nbeta\n", encoding="utf-8")
+
+            original_cwd = Path.cwd()
+            os.chdir(temp_path)
+            try:
+                registry = build_registry()
+                result = registry.execute("read_file", {"path": "notes.txt"})
+            finally:
+                os.chdir(original_cwd)
+
+        self.assertEqual(result["path"], "notes.txt")
+        self.assertEqual(result["content"], "alpha\nbeta\n")
+        self.assertEqual(result["start_line"], 1)
+        self.assertEqual(result["end_line"], 2)
+        self.assertFalse(result["truncated"])
+
+    def test_build_registry_executes_write_and_edit_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            temp_path = Path(tmp_dir)
+            original_cwd = Path.cwd()
+            os.chdir(temp_path)
+            try:
+                registry = build_registry()
+                write_result = registry.execute(
+                    "write_file",
+                    {"path": "draft.txt", "content": "hello world\n"},
+                )
+                edit_result = registry.execute(
+                    "edit_file",
+                    {
+                        "path": "draft.txt",
+                        "old_text": "world",
+                        "new_text": "agent",
+                    },
+                )
+                content = (temp_path / "draft.txt").read_text(encoding="utf-8")
+            finally:
+                os.chdir(original_cwd)
+
+        self.assertEqual(write_result["path"], "draft.txt")
+        self.assertEqual(write_result["bytes_written"], len("hello world\n"))
+        self.assertFalse(write_result["appended"])
+        self.assertEqual(edit_result["path"], "draft.txt")
+        self.assertEqual(edit_result["replacements"], 1)
+        self.assertEqual(content, "hello agent\n")
+
+    def test_file_tools_reject_paths_outside_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            temp_path = Path(tmp_dir)
+            original_cwd = Path.cwd()
+            os.chdir(temp_path)
+            try:
+                registry = build_registry()
+                with self.assertRaises(ValueError):
+                    registry.execute("read_file", {"path": "../outside.txt"})
+                with self.assertRaises(ValueError):
+                    registry.execute(
+                        "write_file",
+                        {"path": "../outside.txt", "content": "nope"},
+                    )
+            finally:
+                os.chdir(original_cwd)
 
 
 class ToolRuntimeArchitectureTests(unittest.TestCase):
