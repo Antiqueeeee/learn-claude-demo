@@ -1,7 +1,4 @@
-
-
-
-from to_do_list.model import PlanningState, PlanItem, PlanStatus
+from modules.to_do.model import PlanItem, PlanningState, PlanStatus
 
 
 class TodoManager:
