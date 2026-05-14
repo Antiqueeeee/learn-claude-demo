@@ -13,8 +13,10 @@ EXPECTED_TOOL_NAMES = {
     "bash",
     "edit_file",
     "fx_convert",
+    "grep",
     "read_file",
     "search_docs",
+    "task",
     "unit_convert",
     "write_file",
 }
@@ -80,6 +82,22 @@ class ToolRuntimeTests(unittest.TestCase):
             ),
             ["path", "old_text", "new_text"],
         )
+        self.assertEqual(
+            next(
+                tool["function"]["parameters"]["required"]
+                for tool in tools
+                if tool["function"]["name"] == "task"
+            ),
+            ["prompt"],
+        )
+        self.assertEqual(
+            next(
+                tool["function"]["parameters"]["required"]
+                for tool in tools
+                if tool["function"]["name"] == "grep"
+            ),
+            ["pattern"],
+        )
         fx_schema = next(
             tool["function"]["parameters"]
             for tool in tools
@@ -133,6 +151,14 @@ class ToolRuntimeTests(unittest.TestCase):
         result = registry.execute("search_docs", {"query": "agent loop"})
 
         self.assertEqual(result, {"hits": [], "query": "agent loop"})
+
+    def test_build_registry_executes_grep(self) -> None:
+        registry = build_registry()
+
+        result = registry.execute("grep", {"pattern": "EXPECTED_TOOL_NAMES", "path": "tests/test_tool_runtime.py"})
+
+        self.assertTrue(result["matched"])
+        self.assertIn("EXPECTED_TOOL_NAMES", result["matches"])
 
     def test_build_registry_executes_bash(self) -> None:
         registry = build_registry()
